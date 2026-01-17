@@ -1,6 +1,6 @@
 # An ADS-B one-command stack for nix (readsb + tar1090)
 
-![Screenshot](img.png)
+![Chopper](./img.jpg)
 
 A **reproducible, one-command ADS-B receiver** using Nix flakes.
 
