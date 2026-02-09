@@ -14,14 +14,14 @@
         # --- tar1090 static UI (pinned commit for determinism) ---
         tar1090 = pkgs.stdenvNoCC.mkDerivation rec {
           pname = "tar1090";
-          version = "unstable-2026-01-17";
+          version = "unstable-2026-01-18";
 
           src = pkgs.fetchFromGitHub {
             owner = "wiedehopf";
             repo  = "tar1090";
             # IMPORTANT: pin this to a commit (not "master") for determinism
             # Update these two together if you ever want a newer tar1090.
-            rev    = "f0a6b7dbf6d4f0a7a8a1b1b1e9d7b3c4f2a1c0de";
+            rev    = "0ce055e0dfb8a82d8128bf6bb44a71ed2ab63888";
             sha256 = "sha256-QfCBNUIciawIAoRqafim1UiEjnFSeasV59+AR6Bypb4=";
           };
 
