@@ -180,6 +180,12 @@ Then open:
 http://localhost:8080
 ```
 
+To see what the receiver is doing from another terminal:
+
+```bash
+nix run .#status
+```
+
 ---
 
 ## What it does
@@ -214,8 +220,7 @@ The commonest cause is **`LAT`/`LON` not set** — readsb is decoding fine but
 cannot resolve positions. See *Why `LAT`/`LON` matter* above. Check with:
 
 ```bash
-python3 -c "import json;d=json.load(open('run/webroot/data/aircraft.json'));\
-print('messages',d['messages'],'aircraft',len(d['aircraft']))"
+nix run .#status
 ```
 
 Many messages plus zero aircraft over several minutes points squarely at this.
@@ -259,8 +264,26 @@ signal that is always present.
 **3. Is the receiver decoding?**
 
 ```bash
-python3 -c "import json;l=json.load(open('run/webroot/data/stats.json'))['total']['local'];\
-print(l.get('accepted'), 'signal', l.get('signal'), 'strong', l.get('strong_signals'))"
+nix run .#status
+```
+
+Reports message counts, tracked aircraft with range from the antenna, and
+decoder statistics:
+
+```
+messages: 1431       aircraft: 5     with position: 4
+
+  HEX     FLIGHT    ALT      RSSI    RANGE
+  7c6deb  QFA153    20600    -18.3   142.7 km
+  c82744  ANZ102    16975    -18.7    88.1 km
+  c8218d  ZKDDE     1600     -18.5   (no position yet)
+
+furthest contact: 142.7 km
+
+decoder (since start)
+  accepted:  [3043, 1027]  (clean, 1-bit corrected)
+  signal:    -17.4 dBFS   noise: -18.0 dBFS
+  strong:    628 of 4070 (15.4%)
 ```
 
 `accepted` is `[clean, 1-bit-corrected]`. Both climbing means real ADS-B with

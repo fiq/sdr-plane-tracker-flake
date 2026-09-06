@@ -192,11 +192,21 @@
           '';
         };
 
+        # --- status reporter: what is the running receiver actually doing? ---
+        adsbStatus = pkgs.writeShellApplication {
+          name = "adsb-status";
+          runtimeInputs = [ pkgs.python3 ];
+          text = ''
+            exec python3 ${./scripts/adsb-status.py} "$@"
+          '';
+        };
+
       in
       {
         packages = {
           tar1090 = tar1090;
           adsb-run = adsbRun;
+          adsb-status = adsbStatus;
           default = adsbRun;
         };
 
@@ -204,6 +214,10 @@
           default = {
             type = "app";
             program = "${adsbRun}/bin/adsb-run";
+          };
+          status = {
+            type = "app";
+            program = "${adsbStatus}/bin/adsb-status";
           };
         };
       }
