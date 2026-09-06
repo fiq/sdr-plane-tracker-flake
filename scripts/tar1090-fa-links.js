@@ -41,4 +41,58 @@
     // upstream's Mode-S lookup by ICAO hex, which still resolves.
     return upstreamModeSLink ? upstreamModeSLink(code, ident, linkText) : "";
   };
+
+  // The selected-aircraft panel is a separate problem: script.js writes a
+  // FlightAware link into #selected_flightaware_link, but this build of
+  // tar1090 has no such element in index.html, so that write goes nowhere.
+  // Linkify #selected_callsign directly instead.
+  //
+  // Safe against tar1090's own updates: updateText() is
+  //   this.text() !== String(text) && this.text(text)
+  // and an <a> still reports the callsign as its text, so tar1090 leaves our
+  // link alone until the selected aircraft actually changes. When it does, it
+  // replaces our anchor with a text node and the observer re-links it.
+  function linkifySelectedCallsign() {
+    var el = document.getElementById("selected_callsign");
+    if (!el) return;
+
+    var text = (el.textContent || "").trim();
+    var callsign = normaliseCallsign(text);
+    if (!callsign || text === "n/a") return;
+
+    var existing = el.querySelector("a[data-fa-callsign]");
+    if (existing && existing.getAttribute("data-fa-callsign") === callsign) {
+      return; // already correct - stops the observer looping
+    }
+
+    el.innerHTML = '<a class="link" target="_blank" rel="noreferrer" ' +
+      'data-fa-callsign="' + callsign + '" ' +
+      'href="https://flightaware.com/live/flight/' + callsign + '">' +
+      escapeHtml(text) + "</a>";
+  }
+
+  function watchSelectedCallsign() {
+    var el = document.getElementById("selected_callsign");
+    if (!el) return;
+    if (window.MutationObserver) {
+      new window.MutationObserver(linkifySelectedCallsign).observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
+    linkifySelectedCallsign();
+  }
+
+  // Exposed so the behaviour can be exercised without a browser.
+  window.tar1090FaLinks = {
+    normaliseCallsign: normaliseCallsign,
+    linkifySelectedCallsign: linkifySelectedCallsign,
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", watchSelectedCallsign);
+  } else {
+    watchSelectedCallsign();
+  }
 })();

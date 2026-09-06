@@ -11,8 +11,12 @@ set_position_args
 RUN_DIR="$ROOT/run"
 WEBROOT="$RUN_DIR/webroot"
 DATA_DIR="$WEBROOT/data"
+# Deliberately OUTSIDE the webroot, which is wiped every run. readsb reloads
+# this at startup, so aircraft traces and the range outline survive a restart
+# instead of starting from nothing each time.
+STATE_DIR="$RUN_DIR/state"
 
-mkdir -p "$RUN_DIR"
+mkdir -p "$RUN_DIR" "$STATE_DIR"
 
 # Deterministic webroot each run.
 rm -rf "$WEBROOT"
@@ -51,9 +55,15 @@ sed -i 's#</body>#  <script src="fa-links.js"></script>\n</body>#' "$WEBROOT/ind
 {
   echo ""
   echo "// --- injected by adsb-run ---"
-  # siteCirclesDistances and altitudes follow DisplayUnits, which defaults to
+  # SiteCirclesDistances and altitudes follow DisplayUnits, which defaults to
   # nautical. Set it explicitly so the ring numbers below mean kilometres.
-  echo "DisplayUnits = \"metric\";"
+  echo "DisplayUnits = \"$UNITS\";"
+  # tar1090 caches the units choice in localStorage and prefers it over this
+  # file (initializeUnitsSelector), so a stale browser preference would win.
+  # config.js is loaded before script.js, so writing it here settles it.
+  # Change UNITS in site.env rather than the UI dropdown - a dropdown change
+  # is overwritten on the next page load.
+  printf "try { localStorage.setItem('displayUnits', '%s'); } catch (e) {}\n" "$UNITS"
   echo "flightawareLinks = true;"
 } >> "$WEBROOT/config.js"
 
@@ -65,7 +75,7 @@ if [ ${#POS_ARGS[@]} -gt 0 ]; then
     echo "SiteLat = DefaultCenterLat = $LAT;"
     echo "SiteLon = DefaultCenterLon = $LON;"
     echo "SiteCircles = true;"
-    echo "siteCirclesDistances = new Array(50,100,150,200,250);  // km"
+    echo "SiteCirclesDistances = new Array($RINGS);  // $UNITS"
   } >> "$WEBROOT/config.js"
 else
   echo "WARNING: LAT/LON unset - aircraft need an odd/even message pair to"
@@ -82,6 +92,7 @@ readsb \
   --gain "$GAIN" \
   "${POS_ARGS[@]}" \
   --preamble-threshold "$PREAMBLE" \
+  --write-state "$STATE_DIR" \
   --net \
   --write-json "$DATA_DIR" \
   --write-json-every 1 \

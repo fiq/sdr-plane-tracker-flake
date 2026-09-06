@@ -177,6 +177,15 @@ class FlightAwareLinkTests(unittest.TestCase):
     def test_falls_back_when_no_callsign(self):
         self.assertIn("upstreamModeSLink", self.js)
 
+    def test_linkifies_selected_aircraft_callsign(self):
+        # this tar1090 build has no #selected_flightaware_link element, so the
+        # panel gets no link unless we linkify #selected_callsign ourselves.
+        self.assertIn("selected_callsign", self.js)
+        self.assertIn("MutationObserver", self.js)
+
+    def test_link_guard_prevents_observer_loop(self):
+        self.assertIn("data-fa-callsign", self.js)
+
     def test_runner_injects_after_script_js(self):
         # must be injected at </body>, i.e. after script.js has loaded
         self.assertIn("fa-links.js", self.runner)
@@ -185,10 +194,42 @@ class FlightAwareLinkTests(unittest.TestCase):
     def test_runner_enables_flightaware_links(self):
         self.assertIn("flightawareLinks = true", self.runner)
 
-    def test_runner_sets_metric_units(self):
-        # siteCirclesDistances follow DisplayUnits; nautical would mis-scale
+    def test_ring_variable_is_capitalised_as_tar1090_expects(self):
+        # tar1090 declares `let SiteCirclesDistances` - a lowercase initial
+        # letter silently creates an unused global and the rings stay default.
+        self.assertIn("SiteCirclesDistances = new Array", self.runner)
+        self.assertNotIn("siteCirclesDistances", self.runner)
+
+    def test_runner_sets_display_units(self):
+        # SiteCirclesDistances follow DisplayUnits; nautical would mis-scale
         self.assertIn('DisplayUnits = ', self.runner)
-        self.assertIn('metric', self.runner)
+
+    def test_runner_overrides_cached_units_preference(self):
+        # tar1090's initializeUnitsSelector prefers localStorage over config,
+        # so a stale browser preference silently wins unless we write it too.
+        self.assertIn("localStorage.setItem('displayUnits'", self.runner)
+
+    def test_rings_are_configurable_with_close_in_defaults(self):
+        lib = open(os.path.join(os.path.dirname(HERE), "scripts",
+                                "lib-site-env.sh")).read()
+        self.assertIn(
+            'RINGS="${envRINGS:-${RINGS:-5,10,25,50,100,150,200,250}}"', lib)
+        self.assertIn("new Array($RINGS)", self.runner)
+
+    def test_state_persists_outside_the_wiped_webroot(self):
+        # the webroot is rm -rf'd every run; state must not live inside it or
+        # the range outline and traces reset on every restart.
+        self.assertIn('STATE_DIR="$RUN_DIR/state"', self.runner)
+        self.assertIn('--write-state "$STATE_DIR"', self.runner)
+        webroot_wipe = self.runner.index('rm -rf "$WEBROOT"')
+        state_def = self.runner.index('STATE_DIR="$RUN_DIR/state"')
+        self.assertLess(state_def, webroot_wipe)
+
+    def test_units_default_is_metric_and_validated(self):
+        lib = open(os.path.join(os.path.dirname(HERE), "scripts",
+                                "lib-site-env.sh")).read()
+        self.assertIn('UNITS="${envUNITS:-${UNITS:-metric}}"', lib)
+        self.assertIn("metric|nautical|imperial", lib)
 
 
 class RtlPowerTests(unittest.TestCase):

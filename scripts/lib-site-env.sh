@@ -11,8 +11,11 @@
 
 load_site_config() {
   # Capture the environment before sourcing, so env vars keep precedence.
-  local envGAIN envLAT envLON envPREAMBLE envPORT config_home candidate cores
+  local envGAIN envLAT envLON envPREAMBLE envPORT envUNITS envRINGS
+  local config_home candidate cores
   envGAIN="${GAIN:-}"
+  envUNITS="${UNITS:-}"
+  envRINGS="${RINGS:-}"
   envLAT="${LAT:-}"
   envLON="${LON:-}"
   envPREAMBLE="${PREAMBLE:-}"
@@ -41,6 +44,17 @@ load_site_config() {
   LAT="${envLAT:-${LAT:-}}"
   LON="${envLON:-${LON:-}}"
   PORT="${envPORT:-${PORT:-8080}}"
+  # tar1090 display units: metric | nautical | imperial. Also governs what
+  # SiteCirclesDistances means, so the range rings follow it.
+  UNITS="${envUNITS:-${UNITS:-metric}}"
+  case "$UNITS" in
+    metric|nautical|imperial) ;;
+    *) echo "WARNING: UNITS='$UNITS' invalid, using metric"; UNITS=metric ;;
+  esac
+  # Range-ring distances, comma separated, in whatever UNITS says. Close-in
+  # rings are useful at a sheltered site where most contacts are near.
+  # tar1090 reuses the last colour when it runs out, so any count is fine.
+  RINGS="${envRINGS:-${RINGS:-5,10,25,50,100,150,200,250}}"
 
   # Demodulator sensitivity: 40-400, LOWER = more sensitive, more CPU. readsb
   # ships 58 (75 for a Pi Zero). The demodulator is effectively single-threaded,

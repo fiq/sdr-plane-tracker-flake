@@ -80,6 +80,8 @@ It is searched for in two places, first hit wins:
 | `GAIN` | `49.6` | Fixed tuner gain in dB. Must not be `auto` — see below. |
 | `PREAMBLE` | auto | Demodulator sensitivity, 40-400. Lower = more sensitive, more CPU. Chosen from core count if unset. |
 | `PORT` | `8080` | Web UI port. |
+| `UNITS` | `metric` | `metric`, `nautical` or `imperial`. Also sets what `RINGS` means. |
+| `RINGS` | `5,10,25,50,100,150,200,250` | Range-ring distances, in `UNITS`. |
 
 Precedence is **environment variable > `site.env` > built-in default**, so you
 can override for a single run without editing anything:
@@ -373,7 +375,15 @@ The runner injects a little configuration into tar1090's webroot on each start:
   governs `siteCirclesDistances` — so range rings written as `50,100,...` would
   silently be drawn in nautical miles. Units are now set to metric explicitly
   and the rings are 50/100/150/200/250 **km**.
-- **Range rings and site marker**, centred on `LAT`/`LON`.
+- **Range rings and site marker**, centred on `LAT`/`LON`. Distances come from
+  `RINGS` (default `5,10,25,50,100,150,200,250`). Note tar1090 declares
+  `SiteCirclesDistances` with a **capital S** — a lowercase spelling silently
+  creates an unused global and leaves the defaults in place.
+- **Units.** `UNITS` (default `metric`). tar1090 caches the units choice in
+  `localStorage` and `initializeUnitsSelector()` prefers it over `config.js`,
+  so a stale browser preference would otherwise win — the runner writes the
+  stored value too. Consequence: changing units via tar1090's own dropdown is
+  overwritten on the next load; set `UNITS` instead.
 - **FlightAware links.** tar1090 ships the hooks (`flightawareLinks`) but
   defaults them off, and its Callsign column uses the Mode-S redirect URL.
   `scripts/tar1090-fa-links.js` overrides that helper so callsigns link to
@@ -381,9 +391,23 @@ The runner injects a little configuration into tar1090's webroot on each start:
   stripped: `"ANZ 146 "` becomes `ANZ146`). Aircraft with no callsign fall back
   to upstream's Mode-S lookup by ICAO hex.
 
+  The selected-aircraft panel needs separate handling: `script.js` writes a
+  link into `#selected_flightaware_link`, but that element does not exist in
+  this tar1090 build, so the write goes nowhere. `#selected_callsign` is
+  linkified directly instead, via a `MutationObserver`. This is safe because
+  `updateText()` is `this.text() !== String(text) && this.text(text)` and an
+  anchor still reports the callsign as its text — so tar1090 leaves the link
+  alone until the selected aircraft changes, then the observer re-links it.
+
 The override is injected as a `<script>` before `</body>`, i.e. after
 `script.js` has defined the helper, so upstream is never patched and the
 pinned tar1090 source stays untouched.
+
+### State across restarts
+
+readsb is given `--write-state run/state`, deliberately outside the webroot
+(which is wiped every run). Aircraft traces and the **range outline** reload on
+startup, so restarting no longer throws away accumulated range history.
 
 ### The range outline
 
@@ -421,7 +445,7 @@ runs over the concatenated result — so an unused helper is a build error.
 nix flake check        # or: python3 tests/test_adsb.py
 ```
 
-24 tests covering coordinate parsing and precedence, great-circle distance,
+31 tests covering coordinate parsing and precedence, great-circle distance,
 status reporting and `--metrics`, `rtl_power` CSV summarising, and the
 degraded paths (missing config, missing data directory, absent CSV), plus the
 FlightAware link URL format and its injection wiring. They run
