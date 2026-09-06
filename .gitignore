@@ -3,3 +3,7 @@ site.env
 
 # Generated at runtime by `nix run .`
 /run/
+
+# Python bytecode
+__pycache__/
+*.pyc

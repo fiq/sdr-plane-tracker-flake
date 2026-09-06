@@ -106,6 +106,27 @@ live tracks. It also centres the tar1090 map on you and draws range rings.
 Use the position of the **antenna**, not the house — range rings are measured
 from it, and MLAT (if you ever feed one) needs metre-level accuracy.
 
+### Choosing a gain
+
+Too low and weak aircraft never reach the demodulator; too high and strong ones
+clip and fail CRC. Measure rather than guess:
+
+```bash
+nix run .#tune          # stop the running stack first - it needs the dongle
+```
+
+Sweeps several gains and reports decode rate for each:
+
+```
+GAIN     MSGS/MIN   ACCEPTED   STRONG%   SIGNAL
+49.6     412.0      1717       6.2       -17.4
+44.5     388.8      1620       3.1       -19.1
+```
+
+Defaults to 4 gains at 5 minutes each; override with `DWELL` and `GAINS`. Run
+it **during daylight** — a sweep against an empty sky measures nothing, and
+small differences are noise.
+
 ### Why `GAIN` is fixed and not `auto`
 
 readsb's autogain repeatedly rewrites the R820T gain register while the USB
@@ -248,12 +269,20 @@ DVB driver — not this flake.
 **2. Does RF reach the ADC?**
 
 ```bash
-nix shell nixpkgs#rtl-sdr -c rtl_power -f 88M:108M:100k -g 30 -i 8 -1 fm.csv
+nix run .#survey        # stop the running stack first - it needs the dongle
 ```
 
-FM broadcast is enormously strong; peaks 15+ dB above the noise floor prove the
-antenna, coax and ADC all work. Useful because it tests the whole chain with a
-signal that is always present.
+Sweeps the FM broadcast band and the 1090 MHz band, and tells you how to read
+the result. FM is enormously strong, so clear peaks prove antenna, coax, tuner
+and ADC all work — it tests the whole chain with a signal that is always there.
+
+```
+=== FM broadcast band (88-108 MHz) ===
+noise floor (median): 3.5 dB
+strongest peaks:
+     91.59 MHz    21.2 dB  (+17.8 over floor)
+    105.19 MHz    17.0 dB  (+13.5 over floor)
+```
 
 > **`rtl_power` cannot see ADS-B.** Squitters are ~120 us bursts at a very low
 > duty cycle, and `rtl_power` averages power across its integration window, so
@@ -335,6 +364,38 @@ Consequences worth knowing:
   antenna out from the wall by 20-30 cm widens the wedge noticeably.
 
 ---
+
+## Repository layout
+
+```
+flake.nix              thin: dependencies and store paths only
+scripts/
+  lib-site-env.sh      config resolution (site.env, precedence, auto preamble)
+  lib-dongle.sh        RTL-SDR busy detection
+  adsb-run.sh          the runner
+  adsb-tune.sh         gain sweep
+  adsb-survey.sh       rtl_power RF sanity sweeps
+  adsb-status.py       status report and --metrics
+  rtl-power-summary.py rtl_power CSV -> noise floor and peaks
+tests/
+  test_adsb.py         unit tests
+  fixtures/            sample readsb JSON and rtl_power CSV
+```
+
+The scripts are the source of truth; the flake only supplies dependencies and
+injects store paths. Each script declares the libraries it uses, and shellcheck
+runs over the concatenated result — so an unused helper is a build error.
+
+## Tests
+
+```bash
+nix flake check        # or: python3 tests/test_adsb.py
+```
+
+17 tests covering coordinate parsing and precedence, great-circle distance,
+status reporting and `--metrics`, `rtl_power` CSV summarising, and the
+degraded paths (missing config, missing data directory, absent CSV). They run
+against fixtures, so **no dongle is needed** and they work in the Nix sandbox.
 
 ## Notes
 

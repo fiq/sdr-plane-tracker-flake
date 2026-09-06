@@ -4,7 +4,10 @@
 Reads the JSON readsb writes into the webroot. Receiver position is taken
 from site.env (same search order as the runner) so distances can be shown.
 
-Usage: adsb-status [DATA_DIR]      (default: ./run/webroot/data)
+Usage: adsb-status [DATA_DIR] [--metrics]
+
+--metrics prints machine-readable KEY=VALUE lines instead of a report, so
+other tools (adsb-tune) can consume it without reparsing readsb's JSON.
 """
 import json
 import math
@@ -66,9 +69,38 @@ def load(path):
         return None  # readsb rewrites these every second; a torn read is normal
 
 
-def main():
-    data_dir = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DATA
+def collect(data_dir):
+    """Everything the report and --metrics both need."""
+    aircraft_json = load(os.path.join(data_dir, "aircraft.json"))
+    if aircraft_json is None:
+        return None
+    stats = load(os.path.join(data_dir, "stats.json"))
+    local = (stats or {}).get("total", {}).get("local") or {}
+    accepted = local.get("accepted") or []
+    aircraft = aircraft_json.get("aircraft", [])
+    return {
+        "messages": aircraft_json.get("messages", 0),
+        "aircraft": len(aircraft),
+        "positions": len([a for a in aircraft if "lat" in a]),
+        "accepted": sum(accepted),
+        "strong": local.get("strong_signals", 0),
+        "signal": local.get("signal", ""),
+        "noise": local.get("noise", ""),
+    }
 
+
+def print_metrics(data_dir):
+    metrics = collect(data_dir)
+    if metrics is None:
+        return 1
+    for key in ("messages", "aircraft", "positions", "accepted",
+                "strong", "signal", "noise"):
+        print("%s=%s" % (key, metrics[key]))
+    return 0
+
+
+def main_with_dir(data_dir):
+    """The human-readable report. Split out so tests can call it directly."""
     aircraft_json = load(os.path.join(data_dir, "aircraft.json"))
     if aircraft_json is None:
         print("No aircraft.json under %s" % data_dir)
@@ -126,6 +158,14 @@ def main():
         print("\n  Judge these on a decent sample of real traffic - a couple of")
         print("  close aircraft in an empty sky skew 'signal' badly.")
     return 0
+
+
+def main():
+    args = [a for a in sys.argv[1:] if a != "--metrics"]
+    data_dir = args[0] if args else DEFAULT_DATA
+    if "--metrics" in sys.argv[1:]:
+        return print_metrics(data_dir)
+    return main_with_dir(data_dir)
 
 
 if __name__ == "__main__":

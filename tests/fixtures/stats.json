@@ -1,0 +1,6 @@
+{ "total": { "local": {
+    "accepted": [3043, 1027],
+    "strong_signals": 628,
+    "signal": -17.4,
+    "noise": -18.0
+} } }

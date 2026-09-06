@@ -1,0 +1,11 @@
+{ "now" : 1788594893.000,
+  "messages" : 4071,
+  "aircraft" : [
+    {"hex":"7c6deb","flight":"QFA153 ","alt_baro":20600,"rssi":-18.3,
+     "lat":-35.2000,"lon":174.3000,"messages":412},
+    {"hex":"c82744","flight":"ANZ102 ","alt_baro":16975,"rssi":-18.7,
+     "lat":-36.5000,"lon":174.2000,"messages":233},
+    {"hex":"c8218d","flight":"ZKDDE  ","alt_baro":1600,"rssi":-18.5,
+     "messages":17}
+  ]
+}
