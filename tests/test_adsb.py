@@ -158,6 +158,39 @@ class ClippingHintTests(unittest.TestCase):
         self.assertNotIn("%%", out)  # printf-style escape leaking into output
 
 
+class FlightAwareLinkTests(unittest.TestCase):
+    """Guards the URL format and the injection wiring in adsb-run.sh."""
+
+    def setUp(self):
+        root = os.path.dirname(HERE)
+        self.js = open(os.path.join(root, "scripts",
+                                    "tar1090-fa-links.js")).read()
+        self.runner = open(os.path.join(root, "scripts", "adsb-run.sh")).read()
+
+    def test_uses_live_flight_url(self):
+        self.assertIn("https://flightaware.com/live/flight/", self.js)
+
+    def test_normalises_callsign_to_uppercase_no_spaces(self):
+        self.assertIn("toUpperCase()", self.js)
+        self.assertIn("replace(/[^A-Z0-9]/g", self.js)
+
+    def test_falls_back_when_no_callsign(self):
+        self.assertIn("upstreamModeSLink", self.js)
+
+    def test_runner_injects_after_script_js(self):
+        # must be injected at </body>, i.e. after script.js has loaded
+        self.assertIn("fa-links.js", self.runner)
+        self.assertIn("</body>", self.runner)
+
+    def test_runner_enables_flightaware_links(self):
+        self.assertIn("flightawareLinks = true", self.runner)
+
+    def test_runner_sets_metric_units(self):
+        # siteCirclesDistances follow DisplayUnits; nautical would mis-scale
+        self.assertIn('DisplayUnits = ', self.runner)
+        self.assertIn('metric', self.runner)
+
+
 class RtlPowerTests(unittest.TestCase):
     def test_reads_points(self):
         points = power.read_points(os.path.join(FIXTURES, "power.csv"))

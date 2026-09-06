@@ -41,16 +41,31 @@ if port_in_use; then
   exit 1
 fi
 
+# Callsigns link to FlightAware's live flight page. tar1090 ships the hooks
+# (flightawareLinks) but defaults them off, and its callsign column uses the
+# Mode-S redirect URL; fa-links.js overrides that. Injected last so it loads
+# after script.js, which is what defines the helper being replaced.
+cp "$FA_LINKS_JS" "$WEBROOT/fa-links.js"
+sed -i 's#</body>#  <script src="fa-links.js"></script>\n</body>#' "$WEBROOT/index.html"
+
+{
+  echo ""
+  echo "// --- injected by adsb-run ---"
+  # siteCirclesDistances and altitudes follow DisplayUnits, which defaults to
+  # nautical. Set it explicitly so the ring numbers below mean kilometres.
+  echo "DisplayUnits = \"metric\";"
+  echo "flightawareLinks = true;"
+} >> "$WEBROOT/config.js"
+
 if [ ${#POS_ARGS[@]} -gt 0 ]; then
   echo "receiver position: $LAT, $LON (local CPR enabled)"
   # Point the tar1090 map at the receiver too.
   {
-    echo ""
     echo "SiteShow = true;"
     echo "SiteLat = DefaultCenterLat = $LAT;"
     echo "SiteLon = DefaultCenterLon = $LON;"
     echo "SiteCircles = true;"
-    echo "siteCirclesDistances = new Array(50,100,150,200,250);"
+    echo "siteCirclesDistances = new Array(50,100,150,200,250);  // km"
   } >> "$WEBROOT/config.js"
 else
   echo "WARNING: LAT/LON unset - aircraft need an odd/even message pair to"

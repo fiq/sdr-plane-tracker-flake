@@ -73,7 +73,8 @@
           libs = [ ./scripts/lib-site-env.sh ./scripts/lib-dongle.sh ];
           preamble = ''
             TAR1090_DIR="${tar1090}/share/tar1090"
-            export TAR1090_DIR
+            FA_LINKS_JS="${./scripts/tar1090-fa-links.js}"
+            export TAR1090_DIR FA_LINKS_JS
           '';
           runtimeInputs = [
             pkgs.readsb

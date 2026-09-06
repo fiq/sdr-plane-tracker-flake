@@ -365,6 +365,34 @@ Consequences worth knowing:
 
 ---
 
+## Map behaviour
+
+The runner injects a little configuration into tar1090's webroot on each start:
+
+- **Kilometres.** tar1090 defaults to `DisplayUnits = "nautical"`, which also
+  governs `siteCirclesDistances` — so range rings written as `50,100,...` would
+  silently be drawn in nautical miles. Units are now set to metric explicitly
+  and the rings are 50/100/150/200/250 **km**.
+- **Range rings and site marker**, centred on `LAT`/`LON`.
+- **FlightAware links.** tar1090 ships the hooks (`flightawareLinks`) but
+  defaults them off, and its Callsign column uses the Mode-S redirect URL.
+  `scripts/tar1090-fa-links.js` overrides that helper so callsigns link to
+  `https://flightaware.com/live/flight/<CALLSIGN>` (uppercased, punctuation
+  stripped: `"ANZ 146 "` becomes `ANZ146`). Aircraft with no callsign fall back
+  to upstream's Mode-S lookup by ICAO hex.
+
+The override is injected as a `<script>` before `</body>`, i.e. after
+`script.js` has defined the helper, so upstream is never patched and the
+pinned tar1090 source stays untouched.
+
+### The range outline
+
+readsb writes `outline.json` and tar1090 draws it as the *actual range
+outline* — the furthest an aircraft has been seen on each bearing. It is drawn
+in a dark teal (`#00596b`) that reads as near-black on the dark basemap. A
+lopsided outline is not a bug: it is a true picture of what your antenna can
+see, and it is the best before/after evidence when you move the antenna.
+
 ## Repository layout
 
 ```
@@ -377,6 +405,7 @@ scripts/
   adsb-survey.sh       rtl_power RF sanity sweeps
   adsb-status.py       status report and --metrics
   rtl-power-summary.py rtl_power CSV -> noise floor and peaks
+  tar1090-fa-links.js  callsign -> FlightAware live flight page
 tests/
   test_adsb.py         unit tests
   fixtures/            sample readsb JSON and rtl_power CSV
@@ -392,9 +421,10 @@ runs over the concatenated result — so an unused helper is a build error.
 nix flake check        # or: python3 tests/test_adsb.py
 ```
 
-17 tests covering coordinate parsing and precedence, great-circle distance,
+24 tests covering coordinate parsing and precedence, great-circle distance,
 status reporting and `--metrics`, `rtl_power` CSV summarising, and the
-degraded paths (missing config, missing data directory, absent CSV). They run
+degraded paths (missing config, missing data directory, absent CSV), plus the
+FlightAware link URL format and its injection wiring. They run
 against fixtures, so **no dongle is needed** and they work in the Nix sandbox.
 
 ## Notes
