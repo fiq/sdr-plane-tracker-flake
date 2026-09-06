@@ -154,7 +154,8 @@ def main_with_dir(data_dir):
             pct = 100.0 * strong / total
             print("  strong:    %d of %d (%.1f%%)" % (strong, total, pct))
             if pct > 10:
-                print("             >10%% suggests clipping; try a lower GAIN")
+                print("             >10% suggests clipping; try a lower GAIN")
+                print("             measure it: nix run .#tune")
         print("\n  Judge these on a decent sample of real traffic - a couple of")
         print("  close aircraft in an empty sky skew 'signal' badly.")
     return 0

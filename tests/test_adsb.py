@@ -145,6 +145,19 @@ class StatusReportTests(unittest.TestCase):
         self.assertIn("Is the stack running?", buffer.getvalue())
 
 
+class ClippingHintTests(unittest.TestCase):
+    """The fixture has 628/4070 strong (15.4%), so the hint must appear."""
+
+    def test_hint_shown_and_not_double_escaped(self):
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            status.main_with_dir(FIXTURES)
+        out = buffer.getvalue()
+        self.assertIn("15.4%", out)
+        self.assertIn(">10% suggests clipping", out)
+        self.assertNotIn("%%", out)  # printf-style escape leaking into output
+
+
 class RtlPowerTests(unittest.TestCase):
     def test_reads_points(self):
         points = power.read_points(os.path.join(FIXTURES, "power.csv"))
