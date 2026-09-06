@@ -1,0 +1,5 @@
+# Personal site configuration (coordinates) - never commit
+site.env
+
+# Generated at runtime by `nix run .`
+/run/
